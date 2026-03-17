@@ -5,6 +5,25 @@ import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// Search users (must be before /:userId to avoid "search" being matched as userId)
+router.get('/search/:query', authenticate, async (req, res) => {
+  try {
+    const query = req.params.query;
+    const users = await User.find({
+      $or: [
+        { username: { $regex: query, $options: 'i' } },
+        { fullName: { $regex: query, $options: 'i' } }
+      ]
+    })
+    .select('username fullName avatar followers')
+    .limit(20);
+
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Get user profile
 router.get('/:userId', authenticate, async (req, res) => {
   try {
@@ -102,25 +121,6 @@ router.post('/:userId/unfollow', authenticate, async (req, res) => {
     await userToUnfollow.save();
 
     res.json({ message: 'Unfollowed successfully' });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Search users
-router.get('/search/:query', authenticate, async (req, res) => {
-  try {
-    const query = req.params.query;
-    const users = await User.find({
-      $or: [
-        { username: { $regex: query, $options: 'i' } },
-        { fullName: { $regex: query, $options: 'i' } }
-      ]
-    })
-    .select('username fullName avatar followers')
-    .limit(20);
-
-    res.json(users);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

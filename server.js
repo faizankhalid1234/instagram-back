@@ -1,37 +1,20 @@
-import express from 'express';
-import mongoose from 'mongoose';
-import cors from 'cors';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import authRoutes from './routes/auth.js';
-import userRoutes from './routes/users.js';
-import postRoutes from './routes/posts.js';
-import storyRoutes from './routes/stories.js';
+import { connectDB } from './lib/db.js';
+import app from './app.js';
 
 dotenv.config();
 
-const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
     methods: ["GET", "POST"]
   }
 });
 
-// Middleware
-app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/posts', postRoutes);
-app.use('/api/stories', storyRoutes);
-
-// Socket.io for real-time features
+// Socket.io for real-time features (local dev only - not supported on Vercel)
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
@@ -50,19 +33,12 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 5000;
 
-// MongoDB Connection - connect before starting server
 async function startServer() {
   try {
-    await mongoose.connect(process.env.MONGO_URI);
+    await connectDB();
     console.log('✅ MongoDB Connected Successfully!');
-    console.log('✅ Database:', mongoose.connection.db.databaseName);
   } catch (err) {
     console.error('❌ MongoDB Connection Error:', err.message);
-    console.error('\n📋 Troubleshooting tips:');
-    console.error('   1. Check username/password in MongoDB Atlas → Database Access');
-    console.error('   2. Reset user password if needed, then update .env MONGO_URI');
-    console.error('   3. Whitelist your IP: Atlas → Network Access → Add IP (0.0.0.0/0 for dev)');
-    console.error('   4. If password has @,#,: etc, URL-encode them (e.g. @ → %40)\n');
     process.exit(1);
   }
 
